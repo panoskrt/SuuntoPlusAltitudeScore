@@ -1,0 +1,36 @@
+<uiView>
+
+  <div id="suuntoplus">
+
+    <!-- Topmost: title field -->
+    <div class="cm-fg" style="width:100%;height:25%;">
+      <div class="sp-t-s p-hc" style="top:calc(60% - 50%e);">AltiAccli</div>
+    </div>
+
+    <!-- Field just under the title, left side -->
+    <!-- Field title -->
+    <div class="cm-mid sp-t-s" style="top:calc(43% - 100%e);left:calc(26% - 50%e);">Altitude</div>
+    <!-- Field value -->
+    <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(26% - 50%e);">
+      <!-- The app output resource is the persisted acclimatization readiness model output. -->
+      <eval input="/Zapp/{zapp_index}/Output/altitude" outputFormat="Altitude_Fourdigits" default="--"/>
+    </div>
+
+    <!-- Field just under the title, right side -->
+    <!-- Field title -->
+    <div class="cm-mid sp-t-s" optional style="top:calc(43% - 100%e);left:calc(74% - 50%e);">Score</div>
+    <!-- Field value -->
+    <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(74% - 50%e);">
+      <!-- 0-100 acclimatization score: HR recovery + days-at-band vs. arrival baseline for the current altitude band. -->
+      <eval input="/Zapp/{zapp_index}/Output/acclimatization" outputFormat="Count_Fourdigits" default="--" />
+    </div>
+
+    <!-- Bottom text area -->
+    <div class="sp-t-s p-tc p-hc" style="top:calc(75% - 50%e);width:75%;max-height:120px;">
+      <!-- status: 0 = not at a qualifying altitude band, 1 = Adapting, 2 = Getting there, 3 = Adapted -->
+      <eval input="/Zapp/{zapp_index}/Output/status" outputFormat="script x => (x === 1 ? 'Adapting' : x === 2 ? 'Getting there' : x === 3 ? 'Adapted' : 'No altitude stimulus')" default="--" />. <eval input="/Zapp/{zapp_index}/Output/daysAtAltitude" outputFormat="Count_Fourdigits" default="--" /> days at altitude
+    </div>
+
+  </div>
+
+</uiView>

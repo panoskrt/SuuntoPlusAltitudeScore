@@ -1,0 +1,53 @@
+{
+  "name": "AltiAccli",
+  "version": "1.0",
+  "author": "Author",
+  "description": "Sports app",
+  "type": "feature",
+  "usage": "workout",
+  "modificationTime": 1789242784,
+  "in": [
+    {
+      "name": "Time",
+      "source": "Dev/Time",
+      "type": "subscribe"
+    },
+    {
+      "name": "Altitude",
+      "source": "Fusion/Altitude",
+      "type": "subscribe"
+    },
+    {
+      "name": "ExerciseState",
+      "source": "Activity/Exercise/State",
+      "type": "subscribe"
+    },
+    {
+      "name": "MinHR",
+      "source": "Activity/Move/-1/HeartRate/Min",
+      "type": "subscribe"
+    }
+  ],
+  "out": [
+    {
+      "name": "counter"
+    },
+    {
+      "name": "acclimatization"
+    },
+    {
+      "name": "altitude"
+    },
+    {
+      "name": "daysAtAltitude"
+    },
+    {
+      "name": "status"
+    }
+  ],
+  "template": [
+    {
+      "name": "t.html"
+    }
+  ]
+}

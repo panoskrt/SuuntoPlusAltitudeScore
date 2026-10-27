@@ -44,6 +44,10 @@
 // levels, a large sleeping HR rise, or sleeping more than 500 m higher than
 // the night before above 3000 m. All constants are approximations from
 // field data and guidelines, an indicator rather than a medical assessment.
+//
+// The lower button switches to g.html, a graph of the last 7 calendar
+// nights: each night's sleeping altitude and the score the model gives it
+// the morning after (nightAlt0..6 / nightScore0..6, 0 = last recorded night).
 
 var STATE_KEY = 'altiaccli_state_v2';
 var DAY = 86400;
@@ -60,6 +64,7 @@ var MIN_SLEEP = 3 * 3600;      // s; shorter sleeps are naps or tracking gaps
 var STALE_NIGHT = 1.5 * DAY;   // s; an older last night says nothing about today
 var SPOT_MAX_AGE = 2 * 3600;   // s; older spot SpO2 readings are ignored
 var REFRESH = 900;             // s; re-read the watch history this often
+var GRAPH_NIGHTS = 7;          // calendar nights in the graph view (nightAlt0..6 / nightScore0..6)
 
 var TAU_UP = 3;                // days; acclimatization time constant (~90% in a week at 3000 m)
 var MAX_GAIN_PER_DAY = 500;    // m; the 500 m/day sleeping-ascent guideline above 3000 m
@@ -96,6 +101,7 @@ var spot = null;               // latest spot SpO2 reading
 var lastRequest = 0;
 var nightsChanged = true;
 var stateChanged = false;
+var currentTemplate = 't';     // 't' = score view, 'g' = last 7 nights graph
 
 var clamp01 = function (x) {
   return x < 0 ? 0 : (x > 1 ? 1 : x);
@@ -268,11 +274,44 @@ var physiology = function (nights, h) {
   return { a: THRESHOLD + (h - THRESHOLD) * sum / weight, w: weight, alt: h, caution: caution };
 };
 
-// Replays the stored nights through the exposure model and collects the
-// physiological evidence from the latest ones.
+// Physiological evidence from the nights up to nights[i] spent at its altitude.
+var evidenceAt = function (nights, i) {
+  var h = nights[i].alt;
+  if (h <= THRESHOLD) return null;
+  var recent = [];
+  for (var j = i; j >= 0 && recent.length < EVIDENCE_NIGHTS; j--) {
+    if (Math.abs(nights[j].alt - h) > SAME_ALTITUDE) break;
+    recent.push(nights[j]);
+  }
+  return physiology(recent, h);
+};
+
+// Weighted blend of the exposure model with evidence estimates {a, w, alt};
+// physiology may close at most MAX_PHYS_LEAD of the gap above the exposure model.
+var blend = function (exposure, estimates) {
+  var sum = W_TIME * exposure;
+  var weight = W_TIME;
+  var top = 0;
+  for (var i = 0; i < estimates.length; i++) {
+    sum += estimates[i].w * estimates[i].a;
+    weight += estimates[i].w;
+    top = Math.max(top, estimates[i].alt);
+  }
+  var a = Math.min(sum / weight, exposure + MAX_PHYS_LEAD * Math.max(0, top - exposure));
+  return Math.max(THRESHOLD, a);
+};
+
+var scoreFor = function (altitude, a) {
+  return Math.round(100 * clamp01(1 - (altitude - a) / Math.max(altitude - THRESHOLD, MIN_SPAN)));
+};
+
+// Replays the stored nights through the exposure model, scoring each night as
+// the app would have the morning after, and collects the latest evidence.
 var rebuildModel = function () {
   var nights = state.nights;
   var a = THRESHOLD;
+  var scores = [];
+  var evidence = null;
   var i;
   for (i = 0; i < nights.length; i++) {
     var days = i ? (nights[i].end - nights[i - 1].end) / DAY : 1;
@@ -282,20 +321,32 @@ var rebuildModel = function () {
       days = 1;
     }
     a = expose(a, nights[i].alt, days);
+    evidence = evidenceAt(nights, i);
+    scores.push(scoreFor(nights[i].alt, blend(a, evidence ? [evidence] : [])));
   }
 
   var last = nights.length ? nights[nights.length - 1] : null;
-  model = { a: a, last: last, nightsAt: 0, evidence: null, fastAscent: false };
+  model = {
+    a: a, last: last, nightsAt: 0, evidence: evidence, fastAscent: false,
+    graphAlt: [], graphScore: [], graphTop: 2500
+  };
+  // Graph slots are calendar nights back from the last recorded one; -1 = untracked.
+  for (i = 0; i < GRAPH_NIGHTS; i++) {
+    model.graphAlt.push(-1);
+    model.graphScore.push(0);
+  }
   if (!last) return;
 
-  for (i = nights.length - 1; i >= 0 && nights[i].alt > THRESHOLD; i--) model.nightsAt++;
-
-  var recent = [];
-  for (i = nights.length - 1; i >= 0 && recent.length < EVIDENCE_NIGHTS; i--) {
-    if (Math.abs(nights[i].alt - last.alt) > SAME_ALTITUDE) break;
-    recent.push(nights[i]);
+  for (i = nights.length - 1; i >= 0; i--) {
+    var slot = Math.round((last.end - nights[i].end) / DAY);
+    if (slot >= GRAPH_NIGHTS) break;
+    if (model.graphAlt[slot] !== -1) continue;
+    model.graphAlt[slot] = Math.round(nights[i].alt);
+    model.graphScore[slot] = scores[i];
+    model.graphTop = Math.max(model.graphTop, Math.ceil(nights[i].alt / 500) * 500);
   }
-  if (last.alt > THRESHOLD) model.evidence = physiology(recent, last.alt);
+
+  for (i = nights.length - 1; i >= 0 && nights[i].alt > THRESHOLD; i--) model.nightsAt++;
 
   var prev = nights.length > 1 ? nights[nights.length - 2] : null;
   model.fastAscent = !!prev && last.end - prev.end < STALE_NIGHT && last.alt > 3000 &&
@@ -326,32 +377,24 @@ var estimate = function (now, altitude) {
     a = expose(a, state.stayAlt, (now - state.stayStart) / DAY);
   }
 
-  var exposure = a;
-  var sum = W_TIME * a;
-  var weight = W_TIME;
-  var evidenceAlt = 0;
+  var estimates = [];
   var caution = 0;
   var fresh = last && now - last.end < STALE_NIGHT;
 
   if (fresh && model.evidence) {
-    sum += model.evidence.w * model.evidence.a;
-    weight += model.evidence.w;
-    evidenceAlt = model.evidence.alt;
+    estimates.push(model.evidence);
     caution = model.evidence.caution;
   }
   if (spot && altitude > THRESHOLD && now - spot.t < SPOT_MAX_AGE) {
     var s = spo2Evidence(spot.spo2, altitude, W_SPOT);
     if (s) {
-      sum += s.w * (THRESHOLD + s.f * (altitude - THRESHOLD));
-      weight += s.w;
-      evidenceAlt = Math.max(evidenceAlt, altitude);
+      estimates.push({ a: THRESHOLD + s.f * (altitude - THRESHOLD), w: s.w, alt: altitude });
       if (s.low) caution = CAUTION_SPO2;
     }
   }
   if (!caution && fresh && model.fastAscent) caution = CAUTION_ASCENT;
 
-  a = Math.min(sum / weight, exposure + MAX_PHYS_LEAD * Math.max(0, evidenceAlt - exposure));
-  return { a: Math.max(THRESHOLD, a), caution: caution };
+  return { a: blend(a, estimates), caution: caution };
 };
 
 function evaluate(input, output) {
@@ -366,14 +409,29 @@ function evaluate(input, output) {
   if (nightsChanged) {
     rebuildModel();
     nightsChanged = false;
+    // Literal output names only: the build maps each one to a slot.
+    output.nightAlt0 = model.graphAlt[0];
+    output.nightAlt1 = model.graphAlt[1];
+    output.nightAlt2 = model.graphAlt[2];
+    output.nightAlt3 = model.graphAlt[3];
+    output.nightAlt4 = model.graphAlt[4];
+    output.nightAlt5 = model.graphAlt[5];
+    output.nightAlt6 = model.graphAlt[6];
+    output.nightScore0 = model.graphScore[0];
+    output.nightScore1 = model.graphScore[1];
+    output.nightScore2 = model.graphScore[2];
+    output.nightScore3 = model.graphScore[3];
+    output.nightScore4 = model.graphScore[4];
+    output.nightScore5 = model.graphScore[5];
+    output.nightScore6 = model.graphScore[6];
+    output.graphTop = model.graphTop;
   }
 
   if (now > 0 && altitude !== null) {
     var est = estimate(now, altitude);
-    var score = 100;
+    var score = scoreFor(altitude, est.a);
     var status = 0;
     if (altitude > THRESHOLD) {
-      score = Math.round(100 * clamp01(1 - (altitude - est.a) / Math.max(altitude - THRESHOLD, MIN_SPAN)));
       status = est.caution || (score < 40 ? 1 : (score < 75 ? 2 : 3));
     }
     output.acclimatization = score;
@@ -410,6 +468,7 @@ function onLoad(input, output) {
     stayStart: Number((saved && saved.stayStart) || 0)
   };
   nightsChanged = true;
+  currentTemplate = 't';
 
   output.acclimatization = 0;
   output.altitude = 0;
@@ -428,12 +487,18 @@ function onInterval() {}         // Is evaluated on interval
 function onPoolLength() {}       // Is evaluated after each pool length (swimming)
 */
 
+// The lower button toggles between the score view (event 1) and the graph (event 2).
+function onEvent(input, output, eventId) {
+  currentTemplate = eventId === 2 ? 'g' : 't';
+  unload('_cm'); // Unload & reload the screen to rerun getUserInterface
+}
+
 // Is evaluated when a user enters the SuuntoPlus sports app screen the first
 // time and when the screen is reloaded. Essentially defines what is shown on
 // the screen by returning the wanted HTML template.
 function getUserInterface() {
   return {
-    template: 't'
+    template: currentTemplate
   };
 }
 

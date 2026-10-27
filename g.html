@@ -1,0 +1,99 @@
+<!--
+  Last 7 calendar nights from main.js, index 0 = last recorded night:
+  nightAlt = sleeping altitude (m, -1 = untracked), nightScore = acclimatization
+  to that altitude the morning after (0-100), graphTop = top of the scale (m).
+  One bar per night, oldest on the left. Bar height = sleeping altitude above
+  1500 m, the coloured fill = the share of it the body was adapted to, and the
+  number = that night's score.
+-->
+<uiView
+  onLoad="
+    var alts = [-1, -1, -1, -1, -1, -1, -1];
+    var scores = [0, 0, 0, 0, 0, 0, 0];
+    var top = 2500;
+    var pending = 0;
+
+    var received = function () {
+      if (--pending === 0) control('#chart', 'REFRESH');
+    };
+    var fetchNight = function (k) {
+      $.get('/Zapp/{zapp_index}/Output/nightAlt' + k, function (v) { alts[k] = v; received(); });
+      $.get('/Zapp/{zapp_index}/Output/nightScore' + k, function (v) { scores[k] = v; received(); });
+    };
+    var refresh = function () {
+      pending = 15;
+      for (var k = 0; k < 7; k++) fetchNight(k);
+      $.get('/Zapp/{zapp_index}/Output/graphTop', function (v) { top = v; received(); });
+    };
+
+    function drawChart(ctx) {
+      var fg = getStyle('css:.cm-fgc', 'color') || '#FFF';
+      var mid = getStyle('css:.cm-mid', 'color') || '#666';
+      var font = Math.round(ctx.height / 8);
+      var slot = ctx.width / 7;
+      var bar = slot * 0.6;
+      var label = font + 4;
+      var chart = ctx.height - label;
+
+      ctx.font = font + 'px monospace numbers';
+      ctx.fillStyle = mid;
+      ctx.fillRect(0, ctx.height - 2, ctx.width, 2);
+
+      for (var i = 0; i < 7; i++) {
+        var k = 6 - i;
+        var alt = alts[k];
+        if (alt < 0) continue;
+        var x = i * slot + (slot - bar) / 2;
+        var h = alt > 1500 ? Math.max(4, chart * (alt - 1500) / (top - 1500)) : 4;
+        ctx.fillStyle = mid;
+        ctx.fillRect(x, ctx.height - h, bar, h);
+        if (alt <= 1500) continue;
+
+        var s = scores[k];
+        ctx.fillStyle = s < 40 ? (getStyle('css:.c-red', 'color') || '#F33') :
+          (s < 75 ? (getStyle('css:.c-orange', 'color') || '#FA0') : (getStyle('css:.c-green', 'color') || '#1D5'));
+        ctx.fillRect(x, ctx.height - h * s / 100, bar, h * s / 100);
+
+        var text = '' + s;
+        ctx.fillStyle = fg;
+        ctx.fillText(text, x + (bar - ctx.measureText(text).width) / 2, ctx.height - h - label);
+      }
+    }
+  "
+  onActivate="
+    refresh();
+    setInterval(refresh, 10000);
+  ">
+
+  <div id="suuntoplus">
+
+    <!-- Topmost: title field -->
+    <div class="cm-fg" style="width:100%;height:25%;">
+      <div class="sp-t-s p-hc" style="top:calc(60% - 50%e);">Last 7 nights</div>
+    </div>
+
+    <object id="chart" type="canvas" build="ctx => drawChart(ctx)"
+            style="position:absolute; left:15%; width:70%; top:31%; height:44%;" />
+
+    <!-- Altitude at the top of the bars' scale (bottom is 1500 m) -->
+    <div class="cm-mid sp-t-s p-tc p-hc" style="top:calc(83% - 50%e);width:65%;max-height:60px;">
+      Scale top <eval input="/Zapp/{zapp_index}/Output/graphTop" outputFormat="Altitude_Fourdigits" default="--" /> <postfix />
+    </div>
+
+    <!-- Lower button returns to the score view (t.html) -->
+    <:if test="{{ IS_NG3 }}">
+      <div class="btn btn-btm">
+        <img class="cm-bgc icon" src="hint-btn-bottom.png" />
+      </div>
+    </:if>
+    <:else>
+      <img class="btn-btmMask" src="a-sel-d.png" />
+    </:else>
+
+    <userInput>
+      <pushButton name="down" onClick="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');" />
+    </userInput>
+
+  </div>
+
+</uiView>

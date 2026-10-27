@@ -33,11 +33,59 @@
     },
     {
       "name": "status"
+    },
+    {
+      "name": "nightAlt0"
+    },
+    {
+      "name": "nightAlt1"
+    },
+    {
+      "name": "nightAlt2"
+    },
+    {
+      "name": "nightAlt3"
+    },
+    {
+      "name": "nightAlt4"
+    },
+    {
+      "name": "nightAlt5"
+    },
+    {
+      "name": "nightAlt6"
+    },
+    {
+      "name": "nightScore0"
+    },
+    {
+      "name": "nightScore1"
+    },
+    {
+      "name": "nightScore2"
+    },
+    {
+      "name": "nightScore3"
+    },
+    {
+      "name": "nightScore4"
+    },
+    {
+      "name": "nightScore5"
+    },
+    {
+      "name": "nightScore6"
+    },
+    {
+      "name": "graphTop"
     }
   ],
   "template": [
     {
       "name": "t.html"
+    },
+    {
+      "name": "g.html"
     }
   ]
 }

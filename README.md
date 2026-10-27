@@ -8,6 +8,11 @@ A rough indicator on altitude acclimatization by providing a basic score.
   Acclimatized (75+), or a caution: low SpO2, high sleeping HR, or ascent too fast.
 - **Adapted to … , N nights**: your estimated acclimatized altitude and the number of
   consecutive nights slept above 1500 m.
+- **Last 7 nights** (lower button): one bar per night, oldest on the left. Bar height is the
+  sleeping altitude above 1500 m, the coloured fill is the share of it you were adapted to the
+  morning after (red <40, orange 40–74, green 75+), and the number is that night's score.
+  Untracked nights are left empty, nights below 1500 m show as a flat stub, and the label below
+  gives the altitude at the top of the scale. Press the lower button again to go back.
 
 ## Data used
 

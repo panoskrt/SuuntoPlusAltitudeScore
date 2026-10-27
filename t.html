@@ -33,6 +33,20 @@
       Adapted to <eval input="/Zapp/{zapp_index}/Output/acclimatizedAltitude" outputFormat="Altitude_Fourdigits" default="--" /> <postfix />, <eval input="/Zapp/{zapp_index}/Output/nightsAtAltitude" outputFormat="Count_Fourdigits" default="--" /> nights
     </div>
 
+    <!-- Lower button opens the last 7 nights graph (g.html) -->
+    <:if test="{{ IS_NG3 }}">
+      <div class="btn btn-btm">
+        <img class="cm-bgc icon" src="hint-btn-bottom.png" />
+      </div>
+    </:if>
+    <:else>
+      <img class="btn-btmMask" src="a-sel-d.png" />
+    </:else>
+
+    <userInput>
+      <pushButton name="down" onClick="$.put('/Zapp/{zapp_index}/Event', 2, null, 'int32');" />
+    </userInput>
+
   </div>
 
 </uiView>

@@ -12,7 +12,6 @@
     <div class="cm-mid sp-t-s" style="top:calc(43% - 100%e);left:calc(26% - 50%e);">Altitude</div>
     <!-- Field value -->
     <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(26% - 50%e);">
-      <!-- The app output resource is the persisted acclimatization readiness model output. -->
       <eval input="/Zapp/{zapp_index}/Output/altitude" outputFormat="Altitude_Fourdigits" default="--"/>
     </div>
 
@@ -21,14 +20,17 @@
     <div class="cm-mid sp-t-s" optional style="top:calc(43% - 100%e);left:calc(74% - 50%e);">Score</div>
     <!-- Field value -->
     <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(74% - 50%e);">
-      <!-- 0-100 acclimatization score: HR recovery + days-at-band vs. arrival baseline for the current altitude band. -->
+      <!-- 0-100: share of the climb from 1500 m to the current altitude covered by the acclimatized altitude. -->
       <eval input="/Zapp/{zapp_index}/Output/acclimatization" outputFormat="Count_Fourdigits" default="--" />
     </div>
 
     <!-- Bottom text area -->
-    <div class="sp-t-s p-tc p-hc" style="top:calc(75% - 50%e);width:75%;max-height:120px;">
-      <!-- status: 0 = not at a qualifying altitude band, 1 = Adapting, 2 = Getting there, 3 = Adapted -->
-      <eval input="/Zapp/{zapp_index}/Output/status" outputFormat="script x => (x === 1 ? 'Adapting' : x === 2 ? 'Getting there' : x === 3 ? 'Adapted' : 'No altitude stimulus')" default="--" />. <eval input="/Zapp/{zapp_index}/Output/daysAtAltitude" outputFormat="Count_Fourdigits" default="--" /> days at altitude
+    <div class="sp-t-s p-tc p-hc" style="top:calc(73% - 50%e);width:75%;max-height:60px;">
+      <!-- status: 0 = below 1500 m, 1 = not acclimatized, 2 = acclimatizing, 3 = acclimatized, 4-6 = caution -->
+      <eval input="/Zapp/{zapp_index}/Output/status" outputFormat="script x => (['No altitude stimulus', 'Not acclimatized', 'Acclimatizing', 'Acclimatized', 'Caution: low SpO2', 'Caution: high sleep HR', 'Caution: ascent too fast'][x] || '--')" default="--" />
+    </div>
+    <div class="cm-mid sp-t-s p-tc p-hc" style="top:calc(84% - 50%e);width:65%;max-height:60px;">
+      Adapted to <eval input="/Zapp/{zapp_index}/Output/acclimatizedAltitude" outputFormat="Altitude_Fourdigits" default="--" /> <postfix />, <eval input="/Zapp/{zapp_index}/Output/nightsAtAltitude" outputFormat="Count_Fourdigits" default="--" /> nights
     </div>
 
   </div>

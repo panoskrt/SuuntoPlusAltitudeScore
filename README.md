@@ -6,8 +6,8 @@ A rough indicator on altitude acclimatization by providing a basic score.
 - **Score (0–100)**: how acclimatized you are to the altitude you're at right now.
 - **Status**: No altitude stimulus (below 1500 m), Not acclimatized (<40), Acclimatizing (40–74),
   Acclimatized (75+), or a caution: low SpO2, high sleeping HR, or ascent too fast.
-- **Adapted to … , N nights**: your estimated acclimatized altitude and the number of
-  consecutive nights slept above 1500 m.
+- **Adapted to …**: your estimated acclimatized altitude. The number of consecutive nights slept
+  above 1500 m is in the workout summary.
 - **Last 7 nights** (lower button): one bar per night, oldest on the left. Bar height is the
   sleeping altitude above 1500 m, the coloured fill is the share of it you were adapted to the
   morning after (red <40, orange 40–74, green 75+), and the number is that night's score.

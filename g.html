@@ -27,7 +27,7 @@
     };
 
     function drawChart(ctx) {
-      var fg = getStyle('css:.cm-fgc', 'color') || '#FFF';
+      var fg = getStyle('css:.cm-bgc', 'color') || '#FFF';
       var mid = getStyle('css:.cm-mid', 'color') || '#666';
       var font = Math.round(ctx.height / 8);
       var slot = ctx.width / 7;
@@ -76,8 +76,10 @@
             style="position:absolute; left:15%; width:70%; top:31%; height:44%;" />
 
     <!-- Altitude at the top of the bars' scale (bottom is 1500 m) -->
-    <div class="cm-mid sp-t-s p-tc p-hc" style="top:calc(83% - 50%e);width:65%;max-height:60px;">
-      Scale top <eval input="/Zapp/{zapp_index}/Output/graphTop" outputFormat="Altitude_Fourdigits" default="--" /> <postfix />
+    <div class="cm-mid sp-vertical-center p-hc" style="top:84%;">
+      <span class="sp-t-s" style="padding-right:5px;">Scale top</span>
+      <span class="sp-t-s"><eval input="/Zapp/{zapp_index}/Output/graphTop" outputFormat="Altitude_Fourdigits" default="--" /></span>
+      <span class="sp-t-s"><postfix /></span>
     </div>
 
     <!-- Lower button returns to the score view (t.html) -->

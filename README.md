@@ -74,3 +74,15 @@ Luks & Swenson 2011, *Pulse oximetry at high altitude*):
 
 All constants are at the top of `main.js`. They are approximations from field data and
 mountaineering guidelines, so treat the result as an indicator, not a medical assessment.
+
+## App metadata
+
+- **Name:** Alti Accli
+- **Version:** 0.1
+- **Type:** SuuntoPlus feature app
+- **Usage:** Workout
+- **Author:** Panagiotis Kritikakos
+
+## License
+
+GPL-2.0 - see [LICENSE](LICENSE).

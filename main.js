@@ -45,6 +45,12 @@
 // the night before above 3000 m. All constants are approximations from
 // field data and guidelines, an indicator rather than a medical assessment.
 //
+// Fast ascent raises an alert (tone/vibration and the a.html popup): either
+// that sleeping-altitude jump, or being RAPID_GAP above the acclimatized
+// altitude while above CAUTION_ALTITUDE, e.g. driving or riding a lift
+// straight up from low altitude. It repeats at most every ALERT_REPEAT while
+// the ascent lasts and re-arms once the gap closes by SAME_ALTITUDE.
+//
 // The lower button switches to g.html, a graph of the last 7 calendar
 // nights: each night's sleeping altitude and the score the model gives it
 // the morning after (nightAlt0..6 / nightScore0..6, 0 = last recorded night).
@@ -68,6 +74,8 @@ var GRAPH_NIGHTS = 7;          // calendar nights in the graph view (nightAlt0..
 
 var TAU_UP = 3;                // days; acclimatization time constant (~90% in a week at 3000 m)
 var MAX_GAIN_PER_DAY = 500;    // m; the 500 m/day sleeping-ascent guideline above 3000 m
+var RAPID_GAP = 1000;          // m above the acclimatized altitude that counts as ascending too fast
+var ALERT_REPEAT = 6 * 3600;   // s; a standing fast-ascent alert repeats at most this often
 var TAU_DOWN = 10;             // days; de-acclimatization time constant
 
 var W_TIME = 1;                // blend weights: exposure model, then markers by how specific
@@ -101,7 +109,7 @@ var spot = null;               // latest spot SpO2 reading
 var lastRequest = 0;
 var nightsChanged = true;
 var stateChanged = false;
-var currentTemplate = 't';     // 't' = score view, 'g' = last 7 nights graph
+var currentTemplate = 't';     // 't' = score view, 'g' = last 7 nights graph, 'a' = fast-ascent alert
 
 var clamp01 = function (x) {
   return x < 0 ? 0 : (x > 1 ? 1 : x);
@@ -145,6 +153,7 @@ var parseNight = function (d) {
   if (!(end > 0)) return null;
   var hr = inRange(d.minimumHr, 0.3, 4); // Hz
   return {
+    start: d.startTimeUTC || d.startTime || end - d.duration,
     end: end,
     alt: d.altitude,
     hr: hr === null ? null : hr * 60,
@@ -327,7 +336,7 @@ var rebuildModel = function () {
 
   var last = nights.length ? nights[nights.length - 1] : null;
   model = {
-    a: a, last: last, nightsAt: 0, evidence: evidence, fastAscent: false,
+    a: a, last: last, nightsAt: 0, evidence: evidence, fastAscent: false, exposureStart: 0,
     graphAlt: [], graphScore: [], graphTop: 2500
   };
   // Graph slots are calendar nights back from the last recorded one; -1 = untracked.
@@ -346,7 +355,12 @@ var rebuildModel = function () {
     model.graphTop = Math.max(model.graphTop, Math.ceil(nights[i].alt / 500) * 500);
   }
 
-  for (i = nights.length - 1; i >= 0 && nights[i].alt > THRESHOLD; i--) model.nightsAt++;
+  // Unbroken run of nights above THRESHOLD; exposure counts from the first one's bedtime.
+  for (i = nights.length - 1; i >= 0 && nights[i].alt > THRESHOLD; i--) {
+    if (i < nights.length - 1 && nights[i + 1].end - nights[i].end > STALE_NIGHT) break;
+    model.nightsAt++;
+    model.exposureStart = nights[i].start || nights[i].end - MIN_SLEEP;
+  }
 
   var prev = nights.length > 1 ? nights[nights.length - 2] : null;
   model.fastAscent = !!prev && last.end - prev.end < STALE_NIGHT && last.alt > 3000 &&
@@ -392,9 +406,39 @@ var estimate = function (now, altitude) {
       if (s.low) caution = CAUTION_SPO2;
     }
   }
-  if (!caution && fresh && model.fastAscent) caution = CAUTION_ASCENT;
+  a = blend(a, estimates);
+  var gap = altitude >= CAUTION_ALTITUDE ? altitude - a : 0;
+  var fastAscent = (fresh && model.fastAscent) || gap >= RAPID_GAP;
+  if (!caution && fastAscent) caution = CAUTION_ASCENT;
 
-  return { a: blend(a, estimates), caution: caution };
+  return { a: a, caution: caution, fastAscent: fastAscent, rearm: !(fresh && model.fastAscent) && gap < RAPID_GAP - SAME_ALTITUDE };
+};
+
+// Seconds spent continuously above THRESHOLD: from the first night of the current
+// run of high nights if it reaches last night, else from when the app first saw
+// the current (high) altitude.
+var exposureSeconds = function (now, altitude) {
+  if (altitude <= THRESHOLD) return 0;
+  var last = model.last;
+  var start = now;
+  if (last && model.exposureStart > 0 && now - last.end < STALE_NIGHT) start = model.exposureStart;
+  if (state.stayStart > 0 && state.stayAlt > THRESHOLD) start = Math.min(start, state.stayStart);
+  return Math.max(0, now - start);
+};
+
+// Tone/vibration plus the a.html popup when a fast ascent starts, repeated at
+// most every ALERT_REPEAT while it lasts.
+var alertFastAscent = function (est, now) {
+  if (est.rearm && state.ascentAlertAt) {
+    state.ascentAlertAt = 0;
+    stateChanged = true;
+  }
+  if (!est.fastAscent || now - (state.ascentAlertAt || 0) < ALERT_REPEAT) return;
+  state.ascentAlertAt = now;
+  stateChanged = true;
+  playIndication('Info', false, 2);
+  currentTemplate = 'a';
+  unload('_cm');
 };
 
 function evaluate(input, output) {
@@ -435,10 +479,11 @@ function evaluate(input, output) {
       status = est.caution || (score < 40 ? 1 : (score < 75 ? 2 : 3));
     }
     output.acclimatization = score;
-    output.altitude = Math.round(altitude);
     output.acclimatizedAltitude = Math.round(est.a);
     output.nightsAtAltitude = model.nightsAt;
+    output.timeAtAltitude = Math.round(exposureSeconds(now, altitude));
     output.status = status;
+    alertFastAscent(est, now);
   }
 
   if (stateChanged) {
@@ -465,15 +510,16 @@ function onLoad(input, output) {
     base: (saved && saved.base) || {},
     baseN: (saved && saved.baseN) || {},
     stayAlt: (saved && typeof saved.stayAlt === 'number') ? saved.stayAlt : 0,
-    stayStart: Number((saved && saved.stayStart) || 0)
+    stayStart: Number((saved && saved.stayStart) || 0),
+    ascentAlertAt: Number((saved && saved.ascentAlertAt) || 0)
   };
   nightsChanged = true;
   currentTemplate = 't';
 
   output.acclimatization = 0;
-  output.altitude = 0;
   output.acclimatizedAltitude = 0;
   output.nightsAtAltitude = 0;
+  output.timeAtAltitude = 0;
   output.status = 0;
 }
 
@@ -487,7 +533,8 @@ function onInterval() {}         // Is evaluated on interval
 function onPoolLength() {}       // Is evaluated after each pool length (swimming)
 */
 
-// The lower button toggles between the score view (event 1) and the graph (event 2).
+// The lower button toggles between the score view (event 1) and the graph (event 2);
+// it also dismisses the fast-ascent popup (event 1).
 function onEvent(input, output, eventId) {
   currentTemplate = eventId === 2 ? 'g' : 't';
   unload('_cm'); // Unload & reload the screen to rerun getUserInterface
@@ -510,6 +557,7 @@ function getSummaryOutputs(input, output) {
   return [
     { id: 's', name: 'Acclimatization', format: 'Count_Fourdigits', value: output.acclimatization, postfix: '%' },
     { id: 'a', name: 'Acclimatized to', format: 'Altitude_Fourdigits', value: output.acclimatizedAltitude },
-    { id: 'n', name: 'Nights at altitude', format: 'Count_Fourdigits', value: output.nightsAtAltitude }
+    { id: 'n', name: 'Nights at altitude', format: 'Count_Fourdigits', value: output.nightsAtAltitude },
+    { id: 't', name: 'Time above 1500 m', format: 'Duration_Fourdigits', value: output.timeAtAltitude }
   ];
 }

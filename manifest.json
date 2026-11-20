@@ -12,9 +12,9 @@
   ],
   "out": [
     { "name": "acclimatization" },
-    { "name": "altitude" },
     { "name": "acclimatizedAltitude" },
     { "name": "nightsAtAltitude" },
+    { "name": "timeAtAltitude" },
     { "name": "status" },
     { "name": "nightAlt0" },
     { "name": "nightAlt1" },
@@ -32,5 +32,5 @@
     { "name": "nightScore6" },
     { "name": "graphTop" }
   ],
-  "template": [{ "name": "t.html" }, { "name": "g.html" }]
+  "template": [{ "name": "t.html" }, { "name": "g.html" }, { "name": "a.html" }]
 }

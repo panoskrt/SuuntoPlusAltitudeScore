@@ -1,4 +1,4 @@
-# SuuntoPlusAltitudeScore
+# AltiAccli - SuuntoPlus App Altitude Acclimitization Score
 A rough indicator on altitude acclimatization by providing a basic score.
 
 ## What the watch shows

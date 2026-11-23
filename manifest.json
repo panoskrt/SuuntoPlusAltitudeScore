@@ -1,43 +1,36 @@
 {
   "name": "AltiAccli",
-  "version": "1.1",
-  "author": "Author",
+  "version": "1.0",
+  "author": "Panagiotis Kritikakos",
   "description": "Altitude acclimatization score",
   "type": "feature",
   "usage": "workout",
   "modificationTime": 1789242784,
   "in": [
-    {
-      "name": "Time",
-      "source": "Dev/Time",
-      "type": "subscribe"
-    },
-    {
-      "name": "Altitude",
-      "source": "Fusion/Altitude",
-      "type": "subscribe"
-    }
+    { "name": "Time", "source": "Dev/Time", "type": "subscribe" },
+    { "name": "Altitude", "source": "Fusion/Altitude", "type": "subscribe" }
   ],
   "out": [
-    {
-      "name": "acclimatization"
-    },
-    {
-      "name": "altitude"
-    },
-    {
-      "name": "acclimatizedAltitude"
-    },
-    {
-      "name": "nightsAtAltitude"
-    },
-    {
-      "name": "status"
-    }
+    { "name": "acclimatization" },
+    { "name": "acclimatizedAltitude" },
+    { "name": "nightsAtAltitude" },
+    { "name": "timeAtAltitude" },
+    { "name": "status" },
+    { "name": "nightAlt0" },
+    { "name": "nightAlt1" },
+    { "name": "nightAlt2" },
+    { "name": "nightAlt3" },
+    { "name": "nightAlt4" },
+    { "name": "nightAlt5" },
+    { "name": "nightAlt6" },
+    { "name": "nightScore0" },
+    { "name": "nightScore1" },
+    { "name": "nightScore2" },
+    { "name": "nightScore3" },
+    { "name": "nightScore4" },
+    { "name": "nightScore5" },
+    { "name": "nightScore6" },
+    { "name": "graphTop" }
   ],
-  "template": [
-    {
-      "name": "t.html"
-    }
-  ]
+  "template": [{ "name": "t.html" }, { "name": "g.html" }, { "name": "a.html" }]
 }

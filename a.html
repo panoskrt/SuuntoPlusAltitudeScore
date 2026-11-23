@@ -1,0 +1,14 @@
+<!-- Fast-ascent alert popup, opened by main.js; the lower button (or a tap on it) dismisses it (event 1) -->
+<uiView>
+  <div id="suuntoplus">
+    <userInput>
+      <pushButton name="down" type="lock" onClick="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');" />
+    </userInput>
+
+    <img src="icon-m-alert.png" class="c-red" style="top:calc(30% - 50%e);left:calc(50% - 50%e);" />
+    <div class="f-b-l p-hc p-tc" style="top:calc(47% - 50%e);width:78%;">Ascent too fast</div>
+    <div class="cm-mid sp-t-s p-hc p-tc" style="top:calc(62% - 50%e);width:70%;max-height:22%;">Slow down and watch for altitude sickness</div>
+
+    <:buttonBtm btnBtmText="Dismiss" btnBtmOnTap="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');" />
+  </div>
+</uiView>

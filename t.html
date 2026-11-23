@@ -1,37 +1,84 @@
-<uiView>
+<uiView
+  onLoad="
+    var score = -1;
+    var refreshBar = function () {
+      $.get('/Zapp/{zapp_index}/Output/acclimatization', function (v) { score = v; control('#bar', 'REFRESH'); });
+    };
+
+    function drawBar(ctx) {
+      var h = ctx.height;
+      ctx.fillStyle = getStyle('css:.cm-mid', 'color') || '#666';
+      ctx.fillRect(0, 0, ctx.width, h);
+      if (!(score >= 0)) return;
+      ctx.fillStyle = score < 40 ? (getStyle('css:.c-red', 'color') || '#F33') :
+        (score < 75 ? (getStyle('css:.c-orange', 'color') || '#FA0') : (getStyle('css:.c-green', 'color') || '#1D5'));
+      ctx.fillRect(0, 0, ctx.width * Math.min(100, score) / 100, h);
+    }
+  "
+  onActivate="
+    refreshBar();
+    setInterval(refreshBar, 5000);
+  ">
 
   <div id="suuntoplus">
 
     <!-- Topmost: title field -->
-    <div class="cm-fg" style="width:100%;height:25%;">
-      <div class="sp-t-s p-hc" style="top:calc(60% - 50%e);">AltiAccli</div>
+    <div class="cm-fg" style="width:100%;height:17%;">
+      <div class="sp-t-s p-hc" style="top:calc(64% - 50%e);">AltiAccli</div>
     </div>
 
     <!-- Field just under the title, left side -->
     <!-- Field title -->
-    <div class="cm-mid sp-t-s" style="top:calc(43% - 100%e);left:calc(26% - 50%e);">Altitude</div>
+    <div class="cm-mid sp-t-s" style="top:calc(33% - 100%e);left:calc(26% - 50%e);">Altitude</div>
     <!-- Field value -->
-    <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(26% - 50%e);">
-      <eval input="/Zapp/{zapp_index}/Output/altitude" outputFormat="Altitude_Fourdigits" default="--"/>
+    <div class="sp-d-m f-num" style="top:calc(54% - 100%e);left:calc(26% - 50%e);">
+      <eval input="/Fusion/Altitude" outputFormat="Altitude_Fourdigits" default="--"/>
     </div>
 
     <!-- Field just under the title, right side -->
     <!-- Field title -->
-    <div class="cm-mid sp-t-s" optional style="top:calc(43% - 100%e);left:calc(74% - 50%e);">Score</div>
+    <div class="cm-mid sp-t-s" optional style="top:calc(33% - 100%e);left:calc(74% - 50%e);">Score</div>
     <!-- Field value -->
-    <div class="sp-d-s f-num" style="top:calc(61% - 100%e);left:calc(74% - 50%e);">
+    <div class="sp-d-m f-num" style="top:calc(54% - 100%e);left:calc(74% - 50%e);">
       <!-- 0-100: share of the climb from 1500 m to the current altitude covered by the acclimatized altitude. -->
       <eval input="/Zapp/{zapp_index}/Output/acclimatization" outputFormat="Count_Fourdigits" default="--" />
     </div>
 
+    <!-- Score bar: filled share = score, coloured like the status thresholds -->
+    <object id="bar" type="canvas" build="ctx => drawBar(ctx)"
+            style="position:absolute; left:20%; width:60%; top:58%; height:3%;" />
+
     <!-- Bottom text area -->
-    <div class="sp-t-s p-tc p-hc" style="top:calc(73% - 50%e);width:75%;max-height:60px;">
-      <!-- status: 0 = below 1500 m, 1 = not acclimatized, 2 = acclimatizing, 3 = acclimatized, 4-6 = caution -->
-      <eval input="/Zapp/{zapp_index}/Output/status" outputFormat="script x => (['No altitude stimulus', 'Not acclimatized', 'Acclimatizing', 'Acclimatized', 'Caution: low SpO2', 'Caution: high sleep HR', 'Caution: ascent too fast'][x] || '--')" default="--" />
+    <div class="sp-t-s p-tc p-hc" style="top:calc(68% - 50%e);width:75%;max-height:60px;">
+      <!-- status: 0 = below 1500 m, 1 = not acclimatized, 2 = acclimatizing, 3 = acclimatized, 4-6 = caution.
+           No square brackets in the script: "[word]" is a translation token in format strings. -->
+      <eval input="/Zapp/{zapp_index}/Output/status" outputFormat="script x => (x === 1 ? 'Not acclimatized' : x === 2 ? 'Acclimatizing' : x === 3 ? 'Acclimatized' : x === 4 ? 'Caution: low SpO2' : x === 5 ? 'Caution: high sleep HR' : x === 6 ? 'Caution: ascent too fast' : 'No altitude stimulus')" default="--" />
     </div>
-    <div class="cm-mid sp-t-s p-tc p-hc" style="top:calc(84% - 50%e);width:65%;max-height:60px;">
-      Adapted to <eval input="/Zapp/{zapp_index}/Output/acclimatizedAltitude" outputFormat="Altitude_Fourdigits" default="--" /> <postfix />, <eval input="/Zapp/{zapp_index}/Output/nightsAtAltitude" outputFormat="Count_Fourdigits" default="--" /> nights
+    <!-- Acclimatized altitude; a postfix shows the unit of the eval whose parent element precedes it -->
+    <div class="cm-mid sp-vertical-center p-hc" style="top:78%;">
+      <span class="sp-t-s" style="padding-right:5px;">Adapted to</span>
+      <span class="sp-t-s"><eval input="/Zapp/{zapp_index}/Output/acclimatizedAltitude" outputFormat="Altitude_Fourdigits" default="--" /></span>
+      <span class="sp-t-s"><postfix /></span>
     </div>
+    <!-- Continuous time above 1500 m: "2d 5h", or "3h 20m" under a day -->
+    <div class="cm-mid sp-vertical-center p-hc" style="top:87%;">
+      <span class="sp-t-s" style="padding-right:5px;">At altitude</span>
+      <span class="sp-t-s"><eval input="/Zapp/{zapp_index}/Output/timeAtAltitude" outputFormat="script x => (x >= 86400 ? Math.floor(x / 86400) + 'd ' + Math.floor(x % 86400 / 3600) + 'h' : Math.floor(x / 3600) + 'h ' + Math.floor(x % 3600 / 60) + 'm')" default="--" /></span>
+    </div>
+
+    <!-- Lower button opens the last 7 nights graph (g.html) -->
+    <:if test="{{ IS_NG3 }}">
+      <div class="btn btn-btm">
+        <img class="cm-bgc icon" src="hint-btn-bottom.png" />
+      </div>
+    </:if>
+    <:else>
+      <img class="btn-btmMask" src="a-sel-d.png" />
+    </:else>
+
+    <userInput>
+      <pushButton name="down" onClick="$.put('/Zapp/{zapp_index}/Event', 2, null, 'int32');" />
+    </userInput>
 
   </div>
 

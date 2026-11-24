@@ -265,6 +265,14 @@ firmware; watches without SpO2 or overnight HRV use the remaining markers.
   its button labels in the simulator. Popups and indications are documented for UI2 watches.
 - All thresholds are population approximations. Individual responses to altitude vary widely.
 
+## App metadata
+
+- **Name:** Alti Accli
+- **Version:** 1.0
+- **Type:** SuuntoPlus feature app
+- **Usage:** Workout
+- **Author:** Panagiotis Kritikakos
+
 ## License
 
 [GNU General Public License v3.0](LICENSE).

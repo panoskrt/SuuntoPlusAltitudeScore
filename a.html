@@ -9,6 +9,19 @@
     <div class="f-b-l p-hc p-tc" style="top:calc(47% - 50%e);width:78%;">Ascent too fast</div>
     <div class="cm-mid sp-t-s p-hc p-tc" style="top:calc(62% - 50%e);width:70%;max-height:22%;">Slow down and watch for altitude sickness</div>
 
-    <:buttonBtm btnBtmText="Dismiss" btnBtmOnTap="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');" />
+    <!-- Dismiss button. Written out by hand (same markup as the SDK's c-buttonBtm.html)
+         because the :buttonBtm template only exists for UI2 displays (n, o, q) -->
+    <:if test="{{ IS_NG3 }}">
+      <div class="css-btn">
+        <div class="btn btn-btm" onTap="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');">
+          <img src="btn-shape-btm.png" class="shape" />
+          <img src="hint-btn-bottom.png" class="icon" />
+          <div class="label">Dismiss</div>
+        </div>
+      </div>
+    </:if>
+    <:else>
+      <img class="btn-btmMask" src="a-sel-d.png" />
+    </:else>
   </div>
 </uiView>
